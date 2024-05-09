@@ -1,0 +1,259 @@
+import javax.swing.*;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Timer;
+import java.util.TimerTask;
+
+public class examsystem extends JFrame {
+    private static final int EXAM_DURATION = 5;
+
+    private User currentUser;
+    private ArrayList<Question> questions;
+    private Timer examTimer;
+    private int timeRemaining;
+
+    public examsystem() {
+        setTitle("Online Examination System");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(800, 600);
+        setLocationRelativeTo(null);
+
+        
+        currentUser = new User("johndoe", "password", "John Doe", "johndoe@example.com");
+        questions = new ArrayList<>();
+        questions.add(new Question("What is the capital of France?", new String[]{"Paris", "London", "Berlin", "Madrid"}, 0));
+        questions.add(new Question("What is the largest planet in our solar system?", new String[]{"Earth", "Mars", "Jupiter", "Saturn"}, 2));
+        questions.add(new Question("What is the currency used in Japan?", new String[]{"Dollar", "Euro", "Yen", "Pound"}, 2));
+
+        JPanel mainPanel = new JPanel(new CardLayout());
+
+        mainPanel.add(createLoginPanel(), "login");
+
+        mainPanel.add(createExamPanel(), "exam");
+
+        mainPanel.add(createProfilePanel(), "profile");
+
+        add(mainPanel, BorderLayout.CENTER);
+    }
+
+    private JPanel createLoginPanel() {
+        JPanel loginPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        loginPanel.add(new JLabel("Username:"), gbc);
+        gbc.gridx = 1;
+        JTextField usernameField = new JTextField(20);
+        loginPanel.add(usernameField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        loginPanel.add(new JLabel("Password:"), gbc);
+        gbc.gridx = 1;
+        JPasswordField passwordField = new JPasswordField(20);
+        loginPanel.add(passwordField, gbc);
+
+        
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        JButton loginButton = new JButton("Login");
+        loginButton.addActionListener(e -> {
+            String username = usernameField.getText();
+            String password = new String(passwordField.getPassword());
+            if (currentUser.authenticate(username, password)) {
+                ((CardLayout) loginPanel.getParent().getLayout()).show(loginPanel.getParent(), "exam");
+            } else {
+                JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        loginPanel.add(loginButton, gbc);
+
+        return loginPanel;
+    }
+
+    private JPanel createExamPanel() {
+        JPanel examPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+
+        
+        for (int i = 0; i < questions.size(); i++) {
+            Question question = questions.get(i);
+            gbc.gridx = 0;
+            gbc.gridy = i;
+            examPanel.add(new JLabel(question.getQuestion()), gbc);
+
+            ButtonGroup buttonGroup = new ButtonGroup();
+            for (int j = 0; j < question.getOptions().length; j++) {
+                gbc.gridx = j + 1;
+                JRadioButton radioButton = new JRadioButton(question.getOptions()[j]);
+                buttonGroup.add(radioButton);
+                examPanel.add(radioButton, gbc);
+            }
+        }
+
+        
+        gbc.gridx = 0;
+        gbc.gridy = questions.size();
+        gbc.gridwidth = 4;
+        JLabel timerLabel = new JLabel("Time Remaining: " + EXAM_DURATION + " minutes");
+        examPanel.add(timerLabel, gbc);
+
+        gbc.gridy = questions.size() + 1;
+        JButton submitButton = new JButton("Submit Exam");
+        submitButton.addActionListener(e -> {
+            
+            submitExam();
+            
+            ((CardLayout) examPanel.getParent().getLayout()).show(examPanel.getParent(), "profile");
+        });
+        examPanel.add(submitButton, gbc);
+
+        
+        startExamTimer(timerLabel);
+
+        return examPanel;
+    }
+
+    private JPanel createProfilePanel() {
+        JPanel profilePanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+
+        
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        profilePanel.add(new JLabel("Username: " + currentUser.getUsername()), gbc);
+        gbc.gridy = 1;
+        profilePanel.add(new JLabel("Name: " + currentUser.getName()), gbc);
+        gbc.gridy = 2;
+        profilePanel.add(new JLabel("Email: " + currentUser.getEmail()), gbc);
+
+        
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        JButton updateProfileButton = new JButton("Update Profile");
+        updateProfileButton.addActionListener(e -> {
+            
+            updateProfile();
+        });
+        profilePanel.add(updateProfileButton, gbc);
+
+        gbc.gridy = 4;
+        JButton logoutButton = new JButton("Logout");
+        logoutButton.addActionListener(e -> {
+            
+            ((CardLayout) profilePanel.getParent().getLayout()).show(profilePanel.getParent(), "login");
+        });
+        profilePanel.add(logoutButton, gbc);
+
+        return profilePanel;
+    }
+
+    private void startExamTimer(JLabel timerLabel) {
+        timeRemaining = EXAM_DURATION * 60; 
+        examTimer = new Timer();
+        examTimer.scheduleAtFixedRate(new TimerTask() {
+            
+            public void run() {
+                timeRemaining--;
+                int minutes = timeRemaining / 60;
+                int seconds = timeRemaining % 60;
+                timerLabel.setText("Time Remaining: " + minutes + " minutes " + seconds + " seconds");
+
+                if (timeRemaining == 0) {
+                    examTimer.cancel();
+                    submitExam();
+                    ((CardLayout) timerLabel.getParent().getLayout()).show(timerLabel.getParent(), "profile");
+                }
+            }
+        }, 1000, 1000);
+    }
+
+    private void submitExam() {
+        examTimer.cancel();
+        JOptionPane.showMessageDialog(this, "Exam submitted successfully.", "Exam Submitted", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void updateProfile() {
+        
+        String newName = JOptionPane.showInputDialog(this, "Enter new name:", currentUser.getName());
+        String newEmail = JOptionPane.showInputDialog(this, "Enter new email:", currentUser.getEmail());
+        currentUser.setName(newName);
+        currentUser.setEmail(newEmail);
+        JOptionPane.showMessageDialog(this, "Profile updated successfully.", "Profile Updated", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            examsystem examSystem = new examsystem();
+            examSystem.setVisible(true);
+        });
+    }
+}
+
+class User {
+    private String username;
+    private String password;
+    private String name;
+    private String email;
+
+    public User(String username, String password, String name, String email) {
+        this.username = username;
+        this.password = password;
+        this.name = name;
+        this.email = email;
+    }
+
+    public boolean authenticate(String username, String password) {
+        return this.username.equals(username) && this.password.equals(password);
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+}
+
+class Question {
+    private String question;
+    private String[] options;
+    private int correctAnswer;
+
+    public Question(String question, String[] options, int correctAnswer) {
+        this.question = question;
+        this.options = options;
+        this.correctAnswer = correctAnswer;
+    }
+
+    public String getQuestion() {
+        return question;
+    }
+
+    public String[] getOptions() {
+        return options;
+    }
+
+    public int getCorrectAnswer() {
+        return correctAnswer;
+    }
+}
